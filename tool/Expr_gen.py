@@ -23,7 +23,7 @@ class GenerateAst:
     
     def defineAst(self, outputDir, baseName, types):
         try: 
-            path = outputDir + '/' + baseName.lower() + '.py'
+            path = outputDir + '/' + baseName + '.py'
             with open(path, "w", encoding="UTF-8") as writer:
                 writer.write(f"from abc import ABC, abstractmethod\n\n")
                 writer.write(f"class {baseName}(ABC):\n")
@@ -46,13 +46,15 @@ class GenerateAst:
             sys.exit(64)
         output_dir = argv[1]
         
-        self.defineAst(output_dir, "Expr", ["Binary   : left, operator, right",
+        self.defineAst(output_dir, "Expr", ["Assign   : name, value",
+                                            "Binary   : left, operator, right",
                                             "Grouping : expression",
                                             "Literal  : value",
                                             "Unary    : operator, right", 
                                             "Variable : name"])
         
-        self.defineAst(output_dir, "Stmt", ["Expression : expression",
+        self.defineAst(output_dir, "Stmt", ["Block      : statements",
+                                            "Expression : expression",
                                             "Print      : expression", 
                                             "Var        : name, initializer"])
 

@@ -1,6 +1,7 @@
 import os, sys, readline
-from Expr import Binary, Grouping, Literal, Unary, Variable, ExprVisitor
-from Stmt import Print, Expression, Var, StmtVisitor
+from Expr import Binary, Grouping, Literal, Unary, Variable, ExprVisitor, Assign
+from Stmt import Print, Expression, Var, Block, StmtVisitor
+
 
 ## TOKEN TYPE DEFINE
 class TokenType:
@@ -85,8 +86,18 @@ class Token:
     
 
 class Environment:
-    def __init__(self):
+    def __init__(self, enclosing = None):
         self.values = {}
+        self.enclosing = enclosing
+        
+    def assign(self, name, value):
+        if name.lexeme in self.values:
+            self.values[name] = value
+            return
+        if self.enclosing is not None: 
+            self.enclosing.assign(name, value) 
+            return
+        raise LOX_RuntimeError(name, "Undefined variable '" + name.lexeme + "'.")
     
     def define(self, name, value):
         self.values[name] = value
@@ -94,7 +105,8 @@ class Environment:
     def get(self, name):
         if name.lexeme in self.values:
             return self.values[name.lexeme]
-        raise LOX_RuntimeError(name, f"Undefined variable '{name.lexeme}'.")
+        if self.enclosing is not None: return self.enclosing.get(name)
+        raise LOX_RuntimeError(name, "Undefined variable '"+ name.lexeme + "'.")
 
 
 ## The Scanner class
@@ -380,10 +392,31 @@ class Parser:
             expr = Binary(expr, operator, right)
         return expr
     
+    def assignment(self):
+        expr  = self.equality()
+        
+        if (self.match(TokenType.EQUAL)):
+            equals = self.previous()
+            value = self.assignment()
+            if isinstance(expr, Variable):
+                name = expr.name
+                return Assign(name, value)
+            self.error(equals, "Invalid assignment target.")
+            
+        return expr 
+    
     def expression(self):
-        return self.equality()
+        return self.assignment()
     
     ## other methods for statements
+    def block(self):
+        statements = []
+        while (not self.check(TokenType.RIGHT_BRACE) and not self.isAtEnd()):
+            statements.append(self.declaration())
+            
+        self.consume(TokenType.RIGHT_BRACE, "Expect '}' after block")
+        return statements
+        
     def printStatement(self):
         value = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after value.")
@@ -391,12 +424,11 @@ class Parser:
     
     def expressionStatement(self):
         expr = self.expression()
-        self.consume(TokenType.SEMICOLON)
+        self.consume(TokenType.SEMICOLON, "Expect ';' after value.")
         return Expression(expr)
     
     def varDeclaration(self):
         name = self.consume(TokenType.IDENTIFIER, "Expect variable name.")
-        
         initializer = None
         if self.match(TokenType.EQUAL):
             initializer = self.expression()
@@ -407,12 +439,16 @@ class Parser:
     
     ## Statement
     def statement(self):
-        if self.match(TokenType.PRINT): return self.printStatement()
+        if self.match(TokenType.PRINT): 
+            return self.printStatement()
+        if self.match(TokenType.LEFT_BRACE): 
+            return Block(self.block())
         return self.expressionStatement()
     
     def declaration(self):
         try:
-            if self.match(TokenType.VAR): return self.varDeclaration()
+            if self.match(TokenType.VAR): 
+                return self.varDeclaration()
             return self.statement()
         except self.LOX_ParserError:
             self.synchronize()
@@ -538,8 +574,22 @@ class Interpreter(ExprVisitor, StmtVisitor):
     # other methods for statements
     def execute(self, stmt):
         stmt.accept(self)
+        
+    def executeBlock(self, statements, environment):
+        previous = self.environment
+        try:
+            self.environment = environment
+            for statement in statements: 
+                self.execute(statement)
+        finally:
+            self.environment = previous
+                
     
     # Visitor patterns (override methods for statements)
+    def visit_block_stmt(self, stmt):
+        self.executeBlock(stmt.statements, Environment(self.environment))
+        return None
+    
     def visit_expression_stmt(self, stmt):
         self.evaluate(stmt.expression)
         return None
@@ -557,6 +607,10 @@ class Interpreter(ExprVisitor, StmtVisitor):
         self.environment.define(stmt.name.lexeme, value)
         return None
     
+    def visit_assign_expr(self, expr):
+        value = self.evaluate(expr.value)
+        self.environment.assign(expr.name, value)
+        return value
     
     # Interperter
     def interpret(self, statements, lox):
@@ -608,22 +662,15 @@ class Lox:
         scanner = Scanner(source,self)
         tokens = scanner.scanTokens()
         
-        '''
-        for token in tokens: 
-            print(token)
-        '''
+        if DEBUG:
+            for token in tokens: 
+                print(token)
+        
         
         parser = Parser(tokens, self)
         statements = parser.parse()
         
         if self.hadError: return
-
-        '''
-        print("=== AST Tree ===")
-        printer = AstPrinter()      
-        print(printer.print(statements))
-        '''
-        
         self.interpreter.interpret(statements, self)
         
     def run_prompt(self):
@@ -649,10 +696,10 @@ class Lox:
         if (token.type == TokenType.EOF):
             self.report(token.line, " at end", message)
         else: 
-            self.report(token.line, " at '" + token.lexeme + ",", message)
+            self.report(token.line, " at '" + token.lexeme + "'", message)
 
     def errorRuntime(self, error):
-        print(f"{error.args[0]}\n[line {error.token.line}]")
+        print("[line " + str(error.token.line) + "] Error: " + error.args[0])
         self.hadRuntimeError = True
     
     def report(self, line, where, message):
@@ -671,6 +718,8 @@ class Lox:
 
 
 if __name__ == "__main__":
+    # DEBUG
+    DEBUG = False
 
     # Instantiate the Lox class
     lox = Lox()

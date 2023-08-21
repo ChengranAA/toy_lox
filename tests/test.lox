@@ -6,9 +6,7 @@
 
 // this is a comment 
 
-x + y 
-x + (a * c / d)
+var x = 1
 
-a = "This is a string"
-b = 1.2323423 // this is a demostration of number 
+print x;
 

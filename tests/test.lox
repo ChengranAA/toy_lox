@@ -1,0 +1,14 @@
+/* 
+    Hello this is lox  test file
+    This is a multiline comment 
+*/
+
+
+// this is a comment 
+
+x + y 
+x + (a * c / d)
+
+a = "This is a string"
+b = 1.2323423 // this is a demostration of number 
+

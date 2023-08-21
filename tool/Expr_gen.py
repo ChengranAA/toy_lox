@@ -45,10 +45,16 @@ class GenerateAst:
             print("Usage: generate_ast <output directory>")
             sys.exit(64)
         output_dir = argv[1]
+        
         self.defineAst(output_dir, "Expr", ["Binary   : left, operator, right",
                                             "Grouping : expression",
                                             "Literal  : value",
-                                            "Unary    : operator, right"])
+                                            "Unary    : operator, right", 
+                                            "Variable : name"])
+        
+        self.defineAst(output_dir, "Stmt", ["Expression : expression",
+                                            "Print      : expression", 
+                                            "Var        : name, initializer"])
 
 generateAst = GenerateAst()
 generateAst.main(sys.argv)

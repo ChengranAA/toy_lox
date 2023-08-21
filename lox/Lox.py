@@ -1,5 +1,6 @@
 import os, sys, readline
-from lox.Expr import Binary, Grouping, Literal, Unary, ExprVisitor
+from Expr import Binary, Grouping, Literal, Unary, Variable, ExprVisitor
+from Stmt import Print, Expression, Var, StmtVisitor
 
 ## TOKEN TYPE DEFINE
 class TokenType:
@@ -81,6 +82,19 @@ class Token:
     
     def __str__(self):
         return f"{self.type} {self.lexeme} {self.literal}"
+    
+
+class Environment:
+    def __init__(self):
+        self.values = {}
+    
+    def define(self, name, value):
+        self.values[name] = value
+        
+    def get(self, name):
+        if name.lexeme in self.values:
+            return self.values[name.lexeme]
+        raise LOX_RuntimeError(name, f"Undefined variable '{name.lexeme}'.")
 
 
 ## The Scanner class
@@ -255,7 +269,7 @@ class Parser:
         self.lox = lox
         
         
-    ## Addtional methods 
+    ## Addtional methods for expressions
     def peek(self):
         return self.tokens[self.current]
     
@@ -286,7 +300,17 @@ class Parser:
     def consume(self, type, message):
         if self.check(type): return self.advance()
         self.error(self.peek(), message)
+    
+    def synchronize(self):
+        self.advance()
         
+        while not self.isAtEnd():
+            if self.previous().type == TokenType.SEMICOLON: return
+            match self.peek().type:
+                case TokenType.CLASS, TokenType.FUN, TokenType.VAR, TokenType.FOR, TokenType.IF, TokenType.WHILE, TokenType.PRINT, TokenType.RETURN: 
+                    return
+                
+            self.advance()
         
     def error(self, token, message):
         self.lox.errorToken(token, message)
@@ -302,10 +326,14 @@ class Parser:
         if self.match(TokenType.NUMBER, TokenType.STRING): 
             return Literal(self.previous().literal)
         
+        if self.match(TokenType.IDENTIFIER): 
+            return Variable(self.previous())
+        
         if self.match(TokenType.LEFT_PAREN):
             expr = self.expression()    
             self.consume(TokenType.RIGHT_PAREN, "Expect ')' after expression. ")
             return Grouping(expr)
+        
         raise self.error(self.peek(), "Expect expression.")
         
     
@@ -355,12 +383,47 @@ class Parser:
     def expression(self):
         return self.equality()
     
+    ## other methods for statements
+    def printStatement(self):
+        value = self.expression()
+        self.consume(TokenType.SEMICOLON, "Expect ';' after value.")
+        return Print(value)
+    
+    def expressionStatement(self):
+        expr = self.expression()
+        self.consume(TokenType.SEMICOLON)
+        return Expression(expr)
+    
+    def varDeclaration(self):
+        name = self.consume(TokenType.IDENTIFIER, "Expect variable name.")
+        
+        initializer = None
+        if self.match(TokenType.EQUAL):
+            initializer = self.expression()
+        
+        self.consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.")
+        return Var(name, initializer)
+    
+    
+    ## Statement
+    def statement(self):
+        if self.match(TokenType.PRINT): return self.printStatement()
+        return self.expressionStatement()
+    
+    def declaration(self):
+        try:
+            if self.match(TokenType.VAR): return self.varDeclaration()
+            return self.statement()
+        except self.LOX_ParserError:
+            self.synchronize()
+            return None
+    
     ## Parse
     def parse(self):
-        try: 
-            return self.expression()
-        except self.LOX_ParserError as e:
-            return None
+        statements = []
+        while not self.isAtEnd():
+            statements.append(self.declaration())
+        return statements
 
 class LOX_RuntimeError(RuntimeError):
     def __init__(self, token, message):
@@ -369,9 +432,13 @@ class LOX_RuntimeError(RuntimeError):
 
 
 ## Interpreter (Visitor Class)
-class Interpreter(ExprVisitor):
+class Interpreter(ExprVisitor, StmtVisitor):
     
-    # Error Handling
+    def __init__(self):
+        super().__init__()
+        self.environment = Environment()
+    
+    # Error Handling for expression
     def checkNumberOperand_unary(self, operator, operand):
         if isinstance(operand, float): return
         raise LOX_RuntimeError(operator, "Operand must be a number.")  
@@ -381,7 +448,7 @@ class Interpreter(ExprVisitor):
             return
         raise LOX_RuntimeError(operator, "Operands mush be numbers")
             
-    # other methods
+    # other methods for expression
     def isTruthy(self, obj):
         if object is None: return False
         if isinstance(obj, bool): return obj
@@ -406,7 +473,7 @@ class Interpreter(ExprVisitor):
         
         return str(object)
     
-    # visitor patterns (overiding methods)
+    # visitor patterns (overiding methods for expression) 
     
     def visit_literal_expr(self, expr):
         return expr.value
@@ -425,6 +492,9 @@ class Interpreter(ExprVisitor):
                 return not self.isTruthy(right)
         
         return None
+    
+    def visit_variable_expr(self, expr):
+        return self.environment.get(expr.name)
     
     def visit_binary_expr(self, expr):
         left = self.evaluate(expr.left)
@@ -465,11 +535,34 @@ class Interpreter(ExprVisitor):
         
         return None
     
+    # other methods for statements
+    def execute(self, stmt):
+        stmt.accept(self)
+    
+    # Visitor patterns (override methods for statements)
+    def visit_expression_stmt(self, stmt):
+        self.evaluate(stmt.expression)
+        return None
+    
+    def visit_print_stmt(self, stmt):
+        value = self.evaluate(stmt.expression)
+        print(self.stringify(value))
+        return None
+    
+    def visit_var_stmt(self, stmt):
+        value = None
+        if stmt.initializer !=  None:
+            value = self.evaluate(stmt.initializer)
+        
+        self.environment.define(stmt.name.lexeme, value)
+        return None
+    
+    
     # Interperter
-    def interpret(self, expression, lox):
+    def interpret(self, statements, lox):
         try:
-            value = self.evaluate(expression)
-            print(self.stringify(value))
+            for statement in statements:
+                self.execute(statement)
         except LOX_RuntimeError as error:
             lox.errorRuntime(error)
     
@@ -521,16 +614,17 @@ class Lox:
         '''
         
         parser = Parser(tokens, self)
-        expression = parser.parse()
+        statements = parser.parse()
         
         if self.hadError: return
 
+        '''
         print("=== AST Tree ===")
         printer = AstPrinter()      
-        print(printer.print(expression))
+        print(printer.print(statements))
+        '''
         
-        
-        self.interpreter.interpret(expression, self)
+        self.interpreter.interpret(statements, self)
         
     def run_prompt(self):
         while True:

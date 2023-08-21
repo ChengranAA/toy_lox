@@ -22,6 +22,10 @@ class ExprVisitor:
 	def visit_unary_expr(self, expr):
 		pass
 
+	@abstractmethod
+	def visit_variable_expr(self, expr):
+		pass
+
 class Binary(Expr):
 	def __init__(self, left, operator, right):
 		self.left = left
@@ -48,4 +52,10 @@ class Unary(Expr):
 		self.right = right
 	def accept(self, visitor):
 		return visitor.visit_unary_expr(self)
+
+class Variable(Expr):
+	def __init__(self, name):
+		self.name = name
+	def accept(self, visitor):
+		return visitor.visit_variable_expr(self)
 

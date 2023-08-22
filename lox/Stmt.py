@@ -15,6 +15,10 @@ class StmtVisitor:
 		pass
 
 	@abstractmethod
+	def visit_if_stmt(self, stmt):
+		pass
+
+	@abstractmethod
 	def visit_print_stmt(self, stmt):
 		pass
 
@@ -33,6 +37,13 @@ class Expression(Stmt):
 		self.expression = expression
 	def accept(self, visitor):
 		return visitor.visit_expression_stmt(self)
+
+class If(Stmt):
+	def __init__(self, condition, thenBranch,elsebranch):
+		self.condition = condition
+		self.thenBranch,elsebranch = thenBranch,elsebranch
+	def accept(self, visitor):
+		return visitor.visit_if_stmt(self)
 
 class Print(Stmt):
 	def __init__(self, expression):

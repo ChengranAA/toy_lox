@@ -1,6 +1,6 @@
 import os, sys, readline
 from Expr import Binary, Grouping, Literal, Unary, Variable, ExprVisitor, Assign
-from Stmt import Print, Expression, Var, Block, StmtVisitor
+from Stmt import Print, Expression, Var, Block, If, StmtVisitor
 
 
 ## TOKEN TYPE DEFINE
@@ -437,9 +437,21 @@ class Parser:
         self.consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.")
         return Var(name, initializer)
     
-    
+    def ifStatement(self):
+        self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.")
+        condition = self.expression()
+        self.consume(TokenType.RIGHT_PAREN, "Expec ')' ater if condition.")
+
+        thenBranch = self.statement()
+        elseBranch = None
+        if self.match(TokenType.ELSE):
+            elseBranch = self.statement()
+        
+        return If(condition, thenBranch, elseBranch)
+        
     ## Statement
     def statement(self):
+        if self.match(TokenType.IF): return self.ifStatement()
         if self.match(TokenType.PRINT): 
             return self.printStatement()
         if self.match(TokenType.LEFT_BRACE): 
@@ -511,6 +523,11 @@ class Interpreter(ExprVisitor, StmtVisitor):
         return str(object)
     
     # visitor patterns (overiding methods for expression) 
+    def visit_assign_expr(self, expr):
+        value = self.evaluate(expr.value)
+        self.environment.assign(expr.name, value)
+        return value
+    
     
     def visit_literal_expr(self, expr):
         return expr.value
@@ -608,11 +625,13 @@ class Interpreter(ExprVisitor, StmtVisitor):
         self.environment.define(stmt.name.lexeme, value)
         return None
     
-    def visit_assign_expr(self, expr):
-        value = self.evaluate(expr.value)
-        self.environment.assign(expr.name, value)
-        return value
-    
+    def visit_if_stmt(self, stmt):
+        if self.isTruthy(self.evaluate(stmt.condition)):
+            self.execute(stmt.thenBranch)
+        elif stmt.elseBranch != None:
+            self.execute(stmt.elseBranch)
+        return None
+
     # Interperter
     def interpret(self, statements, lox):
         try:

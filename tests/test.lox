@@ -6,7 +6,10 @@
 
 // this is a comment 
 
-var x = 1
+var x = 1;
 
-print x;
-
+if (x == 1) {
+    print x;
+} else {
+    print "Not Equal";
+}

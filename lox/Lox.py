@@ -323,7 +323,8 @@ class Parser:
                     return
                 
             self.advance()
-        
+    
+    
     def error(self, token, message):
         self.lox.errorToken(token, message)
         raise self.LOX_ParserError()
@@ -673,12 +674,36 @@ class Lox:
         if self.hadError: return
         self.interpreter.interpret(statements, self)
         
+    def run_expression(self, expression):
+        scanner = Scanner(expression, self)
+        tokens = scanner.scanTokens()
+        
+        if DEBUG:
+            for token in tokens: 
+                print(token)
+        
+        parser = Parser(tokens, self)
+        
+        expr = parser.expression()  # Parse the expression
+        
+        if self.hadError: return
+        try:
+            result = self.interpreter.evaluate(expr)
+            print(result)
+        except LOX_RuntimeError as error:
+            self.errorRuntime(error)
+        except Parser.LOX_ParserError:
+            pass
+            
     def run_prompt(self):
         while True:
             prompt = ">> "
             line = input(prompt)
             if line == None: break
-            self.run(line)
+            if line.endswith(';'):
+                self.run(line)
+            else:
+                self.run_expression(line)
             self.hadError = False
             
     def run_file(self, path):

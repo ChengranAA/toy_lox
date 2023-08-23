@@ -1,3 +1,29 @@
+print "=========  Test for while ===========";
+print "";
+print "";
+
+
 var a = 0;
-a = a + 1;
-print a;
+while (a <= 10) {
+
+  if (a == 10) {
+    print "You reached Ten!";
+  } else {
+    print "Not yet.";
+  }
+  
+  a = a + 1;
+}
+
+print "=========  Test for for ===========";
+print "";
+print "";
+
+var a = 0;
+var temp;
+
+for (var b = 1; a < 10000; b = temp + b) {
+  print a;
+  temp = a;
+  a = b;
+}

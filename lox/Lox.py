@@ -50,6 +50,8 @@ class TokenType:
     TRUE = "TRUE"
     VAR = "VAR"
     WHILE = "WHILE"
+    BREAK = "BREAK"
+    CONTINUE = "CONTINUE"
 
     EOF = "EOF"
 
@@ -70,7 +72,9 @@ keywords = {
     "this": "THIS",
     "true": "TRUE",
     "var": "VAR",
-    "while": "WHILE"
+    "while": "WHILE", 
+    "break": "BREAK",
+    "continue": "CONTINUE"
 }
 
 
@@ -475,9 +479,45 @@ class Parser:
         body = self.statement()
         
         return While(condition, body)
+    
+    def forStatement(self):
+        self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.")
         
+        initilizer = None
+        if self.match(TokenType.SEMICOLON):
+            initilizer = None
+        elif self.match(TokenType.VAR):
+            initilizer = self.varDeclaration()
+        else:
+            initilizer = self.expressionStatement()
+        
+        condition = None
+        if not self.check(TokenType.SEMICOLON):
+            condition = self.expression()
+        self.consume(TokenType.SEMICOLON, "Expect ';' after loop condition.") 
+        
+        increment = None
+        if not self.check(TokenType.RIGHT_PAREN):
+            increment = self.expression()
+        
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses")
+        
+        body = self.statement()
+        
+        if increment is not None:
+            body = Block([body, Expression(increment)])
+            
+        if condition is not None:
+            body = While(condition, body)
+            
+        if initilizer is not None:
+            body = Block([initilizer, body])
+        
+        return body #which show this is a syntatic sugar, the body is a collection of statement of class
+    
     ## Statement
     def statement(self):
+        if self.match(TokenType.FOR): return self.forStatement()
         if self.match(TokenType.IF): return self.ifStatement()
         if self.match(TokenType.PRINT): return self.printStatement()
         if self.match(TokenType.WHILE): return self.whileStatement()
@@ -734,29 +774,6 @@ class Lox:
         
         if self.hadError: return
         self.interpreter.interpret(statements, self)
-    
-    '''   
-    def run_expression(self, expression):
-        scanner = Scanner(expression, self)
-        tokens = scanner.scanTokens()
-        
-        if DEBUG:
-            for token in tokens: 
-                print(token)
-        
-        parser = Parser(tokens, self)
-        
-        expr = parser.expression()  # Parse the expression
-        
-        if self.hadError: return
-        try:
-            result = self.interpreter.evaluate(expr)
-            print(result)
-        except LOX_RuntimeError as error:
-            self.errorRuntime(error)
-        except Parser.LOX_ParserError:
-            pass
-    '''
        
     def run_prompt(self):
         while True:

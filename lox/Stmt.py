@@ -43,9 +43,10 @@ class Expression(Stmt):
 		return visitor.visit_expression_stmt(self)
 
 class If(Stmt):
-	def __init__(self, condition, thenBranch,elseBranch):
+	def __init__(self, condition, thenBranch, elseBranch):
 		self.condition = condition
-		self.thenBranch,elseBranch = thenBranch,elseBranch
+		self.thenBranch = thenBranch
+		self.elseBranch = elseBranch
 	def accept(self, visitor):
 		return visitor.visit_if_stmt(self)
 

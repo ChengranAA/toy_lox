@@ -56,7 +56,7 @@ class GenerateAst:
         
         self.defineAst(output_dir, "Stmt", ["Block      : statements",
                                             "Expression : expression",
-                                            "If         : condition, thenBranch," + "elseBranch" ,
+                                            "If         : condition, thenBranch, elseBranch",
                                             "Print      : expression", 
                                             "Var        : name, initializer", 
                                             "While      : condition, body"])

@@ -8,7 +8,8 @@ In this project, I use python to create a Lox interpreter (which is super useles
 - [ ] Parser
   - [x] Expression
   - [ ] Statement
-  - [ ] Control Loop
+  - [x] Control/Loop
+    - [ ] Break/Continue
   - [ ] Function
   - [ ] Class
 

@@ -1,15 +1,3 @@
-/* 
-    Hello this is lox  test file
-    This is a multiline comment 
-*/
-
-
-// this is a comment 
-
-var x = 1;
-
-if (x == 1) {
-    print x;
-} else {
-    print "Not Equal";
-}
+var a = 0;
+a = a + 1;
+print a;

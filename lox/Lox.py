@@ -1,6 +1,6 @@
 import os, sys, readline
-from Expr import Binary, Grouping, Literal, Unary, Variable, ExprVisitor, Assign
-from Stmt import Print, Expression, Var, Block, If, StmtVisitor
+from Expr import Binary, Grouping, Literal, Unary, Variable, Assign, Logical, ExprVisitor
+from Stmt import Print, Expression, Var, Block, If, While, StmtVisitor
 
 
 ## TOKEN TYPE DEFINE
@@ -92,7 +92,7 @@ class Environment:
         
     def assign(self, name, value):
         if name.lexeme in self.values:
-            self.values[name] = value
+            self.values[name.lexeme] = value
             return
         if self.enclosing is not None: 
             self.enclosing.assign(name, value) 
@@ -393,8 +393,27 @@ class Parser:
             expr = Binary(expr, operator, right)
         return expr
     
+    
+    def logical_and(self):
+        expr = self.equality()
+        while self.match(TokenType.AND):
+            operator = self.previous()
+            right = self.equality()
+            expr = Logical(expr, operator, right)
+        
+        return expr
+    
+    def logical_or(self):
+        expr = self.logical_and()
+        while self.match(TokenType.OR):
+            operator = self.previous()
+            right = self.logical_and()
+            expr = Logical(expr, operator, right)
+        
+        return expr
+    
     def assignment(self):
-        expr  = self.equality()
+        expr  = self.logical_or()
         
         if (self.match(TokenType.EQUAL)):
             equals = self.previous()
@@ -448,12 +467,20 @@ class Parser:
             elseBranch = self.statement()
         
         return If(condition, thenBranch, elseBranch)
+    
+    def whileStatement(self):
+        self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.")
+        condition = self.expression()
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after 'while'.")
+        body = self.statement()
+        
+        return While(condition, body)
         
     ## Statement
     def statement(self):
         if self.match(TokenType.IF): return self.ifStatement()
-        if self.match(TokenType.PRINT): 
-            return self.printStatement()
+        if self.match(TokenType.PRINT): return self.printStatement()
+        if self.match(TokenType.WHILE): return self.whileStatement()
         if self.match(TokenType.LEFT_BRACE): 
             return Block(self.block())
         return self.expressionStatement()
@@ -498,9 +525,9 @@ class Interpreter(ExprVisitor, StmtVisitor):
         raise LOX_RuntimeError(operator, "Operands mush be numbers")
             
     # other methods for expression
-    def isTruthy(self, obj):
+    def isTruthy(self, object):
         if object is None: return False
-        if isinstance(obj, bool): return obj
+        if isinstance(object, bool): return object
         return True
     
     def isEqual(self, a, b):
@@ -523,6 +550,16 @@ class Interpreter(ExprVisitor, StmtVisitor):
         return str(object)
     
     # visitor patterns (overiding methods for expression) 
+    def visit_logical_expr(self, expr):
+        left = self.evaluate(expr.left)
+        
+        if expr.operator.type == TokenType.OR:
+            if self.isTruthy(left): return left
+        else:
+            if not self.isTruthy(left): return left
+        
+        return self.evaluate(expr.right)
+    
     def visit_assign_expr(self, expr):
         value = self.evaluate(expr.value)
         self.environment.assign(expr.name, value)
@@ -632,6 +669,11 @@ class Interpreter(ExprVisitor, StmtVisitor):
             self.execute(stmt.elseBranch)
         return None
 
+    def visit_while_stmt(self,stmt):
+        while self.isTruthy(self.evaluate(stmt.condition)):
+            self.execute(stmt.body)
+        return None
+    
     # Interperter
     def interpret(self, statements, lox):
         try:
@@ -692,7 +734,8 @@ class Lox:
         
         if self.hadError: return
         self.interpreter.interpret(statements, self)
-        
+    
+    '''   
     def run_expression(self, expression):
         scanner = Scanner(expression, self)
         tokens = scanner.scanTokens()
@@ -713,7 +756,8 @@ class Lox:
             self.errorRuntime(error)
         except Parser.LOX_ParserError:
             pass
-            
+    '''
+       
     def run_prompt(self):
         while True:
             prompt = ">> "
@@ -722,7 +766,7 @@ class Lox:
             if line.endswith(';'):
                 self.run(line)
             else:
-                self.run_expression(line)
+                self.run(line + ";")
             self.hadError = False
             
     def run_file(self, path):

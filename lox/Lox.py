@@ -768,12 +768,12 @@ class Lox:
             for token in tokens: 
                 print(token)
         
+        if not DEBUG:
+            parser = Parser(tokens, self)
+            statements = parser.parse()
         
-        parser = Parser(tokens, self)
-        statements = parser.parse()
-        
-        if self.hadError: return
-        self.interpreter.interpret(statements, self)
+            if self.hadError: return
+            self.interpreter.interpret(statements, self)
        
     def run_prompt(self):
         while True:
@@ -824,7 +824,7 @@ class Lox:
 
 if __name__ == "__main__":
     # DEBUG
-    DEBUG = False
+    DEBUG = True
 
     # Instantiate the Lox class
     lox = Lox()

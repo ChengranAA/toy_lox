@@ -48,6 +48,7 @@ class GenerateAst:
         
         self.defineAst(output_dir, "Expr", ["Assign   : name, value",
                                             "Binary   : left, operator, right",
+                                            "Call     : callee, paren, arguments",
                                             "Grouping : expression",
                                             "Literal  : value",
                                             "Logical  : left, operator, right",
@@ -56,8 +57,10 @@ class GenerateAst:
         
         self.defineAst(output_dir, "Stmt", ["Block      : statements",
                                             "Expression : expression",
+                                            "Function   : name, params, body",
                                             "If         : condition, thenBranch, elseBranch",
                                             "Print      : expression", 
+                                            "Return     : keyword, value",
                                             "Var        : name, initializer", 
                                             "While      : condition, body"])
 

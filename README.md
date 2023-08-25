@@ -10,8 +10,10 @@ In this project, I use python to create a Lox interpreter (which is super useles
   - [ ] Statement
   - [x] Control/Loop
     - [ ] Break/Continue
-  - [ ] Function
+  - [x] Function
   - [ ] Class
+
+I will stop for now. Now, it is a semi-working interpreter (at least it will parse and interpret). 
 
 ## Why bother? 
 Learning how to build a interpreter is a valuable experience. There are a lot of theories behind the process (Linguistic, TCS, Engineering). 
@@ -25,5 +27,6 @@ All the file is located in one file to avoid circular import error in python. It
 ### How to run 
 ```
 python lox.py {script}
+>> quit() // to exit
 ```
 It requires python, yeah, it's stupid, but it is indeed an interpretor

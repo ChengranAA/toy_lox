@@ -1,4 +1,4 @@
-# An Useless Interpreter for Lox 
+# A Toy Interpreter for Lox 
 
 In this project, I use python to create a Lox interpreter (which is super useless, but educational). 
 

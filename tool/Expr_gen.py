@@ -59,7 +59,7 @@ class GenerateAst:
                                             "Expression : expression",
                                             "Function   : name, params, body",
                                             "If         : condition, thenBranch, elseBranch",
-                                            "Print      : expression", 
+                                            "Put        : expression", 
                                             "Return     : keyword, value",
                                             "Var        : name, initializer", 
                                             "While      : condition, body"])

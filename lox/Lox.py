@@ -1,6 +1,7 @@
+#!/opt/homebrew/bin/python3
 import os, sys, readline, time
 from Expr import Binary, Grouping, Literal, Unary, Variable, Assign, Call, Logical, ExprVisitor
-from Stmt import Print, Expression, Var, Block, If, While, Function, Return, StmtVisitor
+from Stmt import Put, Expression, Var, Block, If, While, Function, Return, StmtVisitor
 from Callable import LoxCallable, LoxFunction
 from Environment import Environment, LOX_RuntimeError
 from Return import ReturnException
@@ -46,7 +47,7 @@ class TokenType:
     IF = "IF"
     NIL = "NIL"
     OR = "OR"
-    PRINT = "PRINT"
+    PUT = "PUT"
     RETURN = "RETURN"
     SUPER = "SUPER"
     THIS = "THIS"
@@ -69,7 +70,7 @@ keywords = {
     "if": "IF",
     "nil": "NIL",
     "or": "OR",
-    "print": "PRINT",
+    "put": "PUT",
     "return": "RETURN",
     "super": "SUPER",
     "this": "THIS",
@@ -301,7 +302,7 @@ class Parser:
         while not self.isAtEnd():
             if self.previous().type == TokenType.SEMICOLON: return
             match self.peek().type:
-                case TokenType.CLASS, TokenType.FUN, TokenType.VAR, TokenType.FOR, TokenType.IF, TokenType.WHILE, TokenType.PRINT, TokenType.RETURN: 
+                case TokenType.CLASS, TokenType.FUN, TokenType.VAR, TokenType.FOR, TokenType.IF, TokenType.WHILE, TokenType.PUT, TokenType.RETURN: 
                     return
                 
             self.advance()
@@ -441,10 +442,10 @@ class Parser:
         self.consume(TokenType.RIGHT_BRACE, "Expect '}' after block")
         return statements
         
-    def printStatement(self):
+    def putStatement(self):
         value = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after value.")
-        return Print(value)
+        return Put(value)
 
     def function(self, kind):
         name = self.consume(TokenType.IDENTIFIER, "Expect " + kind + " name.")
@@ -545,7 +546,7 @@ class Parser:
     def statement(self):
         if self.match(TokenType.FOR): return self.forStatement()
         if self.match(TokenType.IF): return self.ifStatement()
-        if self.match(TokenType.PRINT): return self.printStatement()
+        if self.match(TokenType.PUT): return self.putStatement()
         if self.match(TokenType.RETURN): return self.returnStatement()
         if self.match(TokenType.WHILE): return self.whileStatement()
         if self.match(TokenType.LEFT_BRACE): 
@@ -580,11 +581,11 @@ class Interpreter(ExprVisitor, StmtVisitor):
         
         
     # Global function define
-    def GlobalFunction(self):           
-        self.globals.define("print", PrintCallable())            
+    def GlobalFunction(self):                 
         self.globals.define("clock", ClockCallable())
         self.globals.define("clear", ClearCallable())
         self.globals.define("quit", QuitCallable())
+        self.globals.define("str", StrCallable())
     
     # Error Handling for expression
     def checkNumberOperand_unary(self, operator, operand):
@@ -739,7 +740,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
         self.evaluate(stmt.expression)
         return None
     
-    def visit_print_stmt(self, stmt):
+    def visit_put_stmt(self, stmt):
         value = self.evaluate(stmt.expression)
         print(self.stringify(value))
         return None

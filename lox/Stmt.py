@@ -23,7 +23,7 @@ class StmtVisitor:
 		pass
 
 	@abstractmethod
-	def visit_print_stmt(self, stmt):
+	def visit_put_stmt(self, stmt):
 		pass
 
 	@abstractmethod
@@ -66,11 +66,11 @@ class If(Stmt):
 	def accept(self, visitor):
 		return visitor.visit_if_stmt(self)
 
-class Print(Stmt):
+class Put(Stmt):
 	def __init__(self, expression):
 		self.expression = expression
 	def accept(self, visitor):
-		return visitor.visit_print_stmt(self)
+		return visitor.visit_put_stmt(self)
 
 class Return(Stmt):
 	def __init__(self, keyword, value):

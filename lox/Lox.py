@@ -4,6 +4,7 @@ from Stmt import Print, Expression, Var, Block, If, While, Function, Return, Stm
 from Callable import LoxCallable, LoxFunction
 from Environment import Environment, LOX_RuntimeError
 from Return import ReturnException
+from GlobalFunction import *
 
 ## TOKEN TYPE DEFINE
 class TokenType:
@@ -575,44 +576,12 @@ class Interpreter(ExprVisitor, StmtVisitor):
         super().__init__()
         self.globals = Environment()
         self.environment = self.globals
-        self.Interpreter()
+        self.GlobalFunction()
         
         
     # Global function define
-    def Interpreter(self):
-        
-        class ClockCallable(LoxCallable):
-            def call(self, interpreter, arguments):
-                return float(time.time())
-    
-            def arity(self):
-                return 0
-    
-            def __str__(self):
-                return "<native fn>"
-            
-        class ClearCallable(LoxCallable):
-            def call(self, interpreter, arguments):
-                os.system('clear')
-                return 0
-            
-            def arity(self):
-                return 0
-            
-            def __str(self):
-                return "<native fn>"
-            
-        class QuitCallable(LoxCallable):
-            def call(self, interpreter, arguments):
-                quit()
-            
-            def arity(self):
-                return 0
-            
-            def __str(self):
-                return "<native fn>" 
-            
-                      
+    def GlobalFunction(self):           
+        self.globals.define("print", PrintCallable())            
         self.globals.define("clock", ClockCallable())
         self.globals.define("clear", ClearCallable())
         self.globals.define("quit", QuitCallable())
@@ -790,7 +759,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
             self.execute(stmt.elseBranch)
         return None
 
-    def visit_while_stmt(self,stmt):
+    def visit_while_stmt(self, stmt):
         while self.isTruthy(self.evaluate(stmt.condition)):
             self.execute(stmt.body)
         return None
@@ -814,35 +783,6 @@ class Interpreter(ExprVisitor, StmtVisitor):
                 self.execute(statement)
         except LOX_RuntimeError as error:
             lox.errorRuntime(error)
-    
-
-## The printAst class
-class AstPrinter(ExprVisitor):
-    def print(self, expr):
-        return expr.accept(self)
-
-    def visit_binary_expr(self, expr):
-        return self.parenthesize(expr.operator.lexeme,
-                                 expr.left, expr.right)
-
-    def visit_grouping_expr(self, expr):
-        return self.parenthesize("group", expr.expression)
-
-    def visit_literal_expr(self, expr):
-        if expr.value is None:
-            return "nil"
-        return str(expr.value)
-
-    def visit_unary_expr(self, expr):
-        return self.parenthesize(expr.operator.lexeme, expr.right)
-
-    def parenthesize(self, name, *exprs):
-        result = "(" + name
-        for expr in exprs:
-            result += " " + expr.accept(self)
-        result += ")"
-        return result 
-    
 
 ## Application class  
 class Lox: 
@@ -854,13 +794,14 @@ class Lox:
     
     # Run methods
     def run(self, source):
+        
         scanner = Scanner(source,self)
         tokens = scanner.scanTokens()
-        
+
         if DEBUG:
             for token in tokens: 
                 print(token)
-        
+            return
         
         parser = Parser(tokens, self)
         statements = parser.parse()
